@@ -1,0 +1,41 @@
+version: "3.8"
+services:
+    app:
+        build: .
+        ports:
+            - "8080:8080"
+        depends_on:
+            - db
+        environment:
+            - DB_HOST=db
+            - DB_PORT=3306
+            - DB_USER=root
+            - DB_PASSWORD=mypassword
+            - DB_NAME=mydatabase
+        volumes:
+            - ./wait-for-it.sh:/wait-for-it.sh
+        entrypoint: /wait-for-it.sh db:3306 -- ./myapi
+
+    db:
+        image: mysql:5.7
+        environment:
+            - MYSQL_ROOT_PASSWORD=mypassword
+            - MYSQL_DATABASE=mydatabase
+        ports:
+            - "3307:3306"
+        volumes:
+            - ./database/migrations:/docker-entrypoint-initdb.d/migrations
+            - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+    db_seed:
+        image: mysql:5.7
+        depends_on:
+            - db
+        environment:
+            - MYSQL_ROOT_PASSWORD=mypassword
+            - MYSQL_DATABASE=mydatabase
+        volumes:
+            - ./database/seed.sql:/docker-entrypoint-initdb.d/seed.sql
+            - ./wait-for-it.sh:/wait-for-it.sh
+        entrypoint: >
+            /wait-for-it.sh db:3307 -- mysql -h db -u root -pmypassword mydatabase < /docker-entrypoint-initdb.d/seed.sql
